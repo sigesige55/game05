@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<title>究極の神髄 - Ultimate Essence</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #05060a;
+    color: #eee;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    overflow: hidden;
+  }
+  #gameContainer {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    background: radial-gradient(circle at center, #1b2233 0, #05060a 70%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  canvas {
+    background: #101320;
+    border-radius: 12px;
+    box-shadow: 0 0 40px rgba(0,0,0,0.7);
+    touch-action: none;
+  }
+  #uiLayer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    font-size: 14px;
+  }
+  .top-bar {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    pointer-events: none;
+  }
+  .hud-left, .hud-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .face-card {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #ffd9a0 0, #e09a5a 40%, #7a4a2a 70%);
+    box-shadow: 0 0 10px rgba(0,0,0,0.6);
+    position: relative;
+    overflow: hidden;
+  }
+  .face-card::before {
+    content: "";
+    position: absolute;
+    inset: 10px;
+    border-radius: 50%;
+    border: 3px solid rgba(0,0,0,0.3);
+  }
+  .face-eyes {
+    position: absolute;
+    top: 45%;
+    left: 50%;
+    width: 60%;
+    height: 20%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    justify-content: space-between;
+    padding: 0 12%;
+  }
+  .eye {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #111;
+    box-shadow: 0 0 4px rgba(0,0,0,0.8);
+  }
+  .face-mouth {
+    position: absolute;
+    bottom: 20%;
+    left: 50%;
+    width: 30%;
+    height: 10%;
+    border-radius: 0 0 50px 50px;
+    border-bottom: 3px solid #5b2a1a;
+    transform: translateX(-50%);
+  }
+  .label-box {
+    background: rgba(0,0,0,0.55);
+    border-radius: 8px;
+    padding: 6px 10px;
+    pointer-events: auto;
+  }
+  .label-title {
+    font-size: 11px;
+    opacity: 0.7;
+  }
+  .label-main {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .btn {
+    border-radius: 999px;
+    padding: 4px 10px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(0,0,0,0.5);
+    color: #eee;
+    cursor: pointer;
+    pointer-events: auto;
+    font-size: 11px;
+  }
+  .btn:active {
+    transform: translateY(1px);
+    background: rgba(255,255,255,0.08);
+  }
+  .hp-bar {
+    width: 140px;
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.08);
+    overflow: hidden;
+    position: relative;
+  }
+  .hp-fill {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    transform-origin: left center;
+    background: linear-gradient(90deg, #ff4b4b, #ffb347);
+  }
+  .hp-label {
+    font-size: 11px;
+    margin-left: 4px;
+  }
+  .boss-bar {
+    position: absolute;
+    top: 64px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(70vw, 480px);
+    background: rgba(0,0,0,0.7);
+    border-radius: 999px;
+    padding: 4px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
+  }
+  .boss-name {
+    font-size: 12px;
+    opacity: 0.8;
+  }
+  .boss-hp {
+    flex: 1;
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.08);
+    overflow: hidden;
+    position: relative;
+  }
+  .boss-hp-fill {
+    position: absolute;
+    inset: 0;
+    transform-origin: left center;
+    background: linear-gradient(90deg, #7f00ff, #e100ff);
+  }
+  .hint {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    opacity: 0.7;
+    text-align: center;
+    pointer-events: none;
+  }
+  .flash {
+    position: absolute;
+    inset: 0;
+    background: white;
+    opacity: 0;
+    pointer-events: none;
+    mix-blend-mode: screen;
+  }
+  /* Mobile controls */
+  #mobileControls {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .joystick {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: radial-gradient(circle at center, rgba(255,255,255,0.08), rgba(0,0,0,0.7));
+    pointer-events: auto;
+    touch-action: none;
+  }
+  .joystick-inner {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4), rgba(255,255,255,0.05));
+    transform: translate(-50%, -50%);
+  }
+  .action-buttons {
+    position: absolute;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    pointer-events: auto;
+  }
+  .action-btn {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.4);
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.25), rgba(0,0,0,0.8));
+    color: #fff;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    touch-action: none;
+  }
+  .action-btn:active {
+    transform: scale(0.96);
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4), rgba(0,0,0,0.9));
+  }
+  @media (min-aspect-ratio: 16/9) {
+    canvas {
+      width: 960px;
+      height: 540px;
+    }
+  }
+  @media (max-aspect-ratio: 16/9) {
+    canvas {
+      width: 100vw;
+      height: calc(100vw * 9 / 16);
+    }
+  }
+</style>
+</head>
+<body>
+<div id="gameContainer">
+  <canvas id="game" width="960" height="540"></canvas>
+  <div id="uiLayer">
+    <div class="top-bar">
+      <div class="hud-left" id="hudLeft">
+        <div class="face-card">
+          <div class="face-eyes">
+            <div class="eye"></div>
+            <div class="eye"></div>
+          </div>
+          <div class="face-mouth"></div>
+        </div>
+        <div class="label-box">
+          <div class="label-title">プレイヤー</div>
+          <div class="label-main">近接＝ハイリスク / ハイリターン</div>
+        </div>
+        <div class="hp-bar">
+          <div class="hp-fill" id="playerHpFill"></div>
+        </div>
+        <div class="hp-label" id="playerHpLabel"></div>
+      </div>
+      <div class="hud-right" id="hudRight">
+        <button class="btn" id="riskBtn">天秤：報酬↑ / 危険↑</button>
+        <button class="btn" id="hudToggleBtn">HUD切替 [H]</button>
+      </div>
+    </div>
+    <div class="boss-bar" id="bossBar" style="display:none;">
+      <div class="boss-name">BOSS：虚無の核</div>
+      <div class="boss-hp">
+        <div class="boss-hp-fill" id="bossHpFill"></div>
+      </div>
+    </div>
+    <div class="hint" id="hint">
+      PC: WASD移動 / マウスで狙う / 左クリック＝近接 / 右クリック＝遠距離<br>
+      スマホ: 左スティックで移動 / 右の「近」「遠」ボタンで攻撃
+    </div>
+    <div class="flash" id="flash"></div>
+    <div id="mobileControls">
+      <div class="joystick" id="joystick">
+        <div class="joystick-inner" id="joystickInner"></div>
+      </div>
+      <div class="action-buttons">
+        <div class="action-btn" id="btnMelee">近</div>
+        <div class="action-btn" id="btnRange">遠</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+
+  const playerHpFill = document.getElementById('playerHpFill');
+  const playerHpLabel = document.getElementById('playerHpLabel');
+  const bossHpFill = document.getElementById('bossHpFill');
+  const bossBar = document.getElementById('bossBar');
+  const flashEl = document.getElementById('flash');
+  const hudLeft = document.getElementById('hudLeft');
+  const hudRight = document.getElementById('hudRight');
+  const hudToggleBtn = document.getElementById('hudToggleBtn');
+  const riskBtn = document.getElementById('riskBtn');
+  const hintEl = document.getElementById('hint');
+
+  const joystick = document.getElementById('joystick');
+  const joystickInner = document.getElementById('joystickInner');
+  const btnMelee = document.getElementById('btnMelee');
+  const btnRange = document.getElementById('btnRange');
+
+  let showHUD = true;
+  let riskLevel = 1; // 1 = normal, 2 = high risk/high reward
+  let deathCount = 0;
+
+  const keys = {};
+  let mousePos = { x: canvas.width / 2, y: canvas.height / 2 };
+  let mouseDownLeft = false;
+  let mouseDownRight = false;
+
+  let isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  document.getElementById('mobileControls').style.display = isMobile ? 'block' : 'none';
+
+  // Game state
+  const state = {
+    player: {
+      x: canvas.width / 2,
+      y: canvas.height / 2 + 80,
+      vx: 0,
+      vy: 0,
+      radius: 18,
+      baseSpeed: 220,
+      accel: 1800,
+      friction: 9,
+      hp: 100,
+      maxHp: 100,
+      invulTime: 0,
+      squash: 1,
+      stretch: 1,
+      squashTimer: 0
+    },
+    enemies: [],
+    bullets: [],
+    particles: [],
+    time: 0,
+    hitstopFrames: 0,
+    bossStopFrames: 0,
+    flashTimer: 0,
+    difficultyScale: 1,
+    loseStreak: 0,
+    stagePhase: 0, // 0: intro, 1: normal enemies, 2: boss
+    boss: null
+  };
+
+  function resetGame() {
+    state.player.x = canvas.width / 2;
+    state.player.y = canvas.height / 2 + 80;
+    state.player.vx = 0;
+    state.player.vy = 0;
+    state.player.hp = state.player.maxHp;
+    state.player.invulTime = 0;
+    state.enemies = [];
+    state.bullets = [];
+    state.particles = [];
+    state.time = 0;
+    state.hitstopFrames = 0;
+    state.bossStopFrames = 0;
+    state.flashTimer = 0;
+    state.stagePhase = 0;
+    state.boss = null;
+    bossBar.style.display = 'none';
+  }
+
+  function spawnEnemy(isBoss = false) {
+    if (isBoss) {
+      const boss = {
+        x: canvas.width / 2,
+        y: canvas.height / 2 - 80,
+        vx: 0,
+        vy: 0,
+        radius: 40,
+        hp: 400,
+        maxHp: 400,
+        isBoss: true,
+        attackTimer: 0,
+        color: '#b45bff'
+      };
+      state.boss = boss;
+      state.enemies.push(boss);
+      bossBar.style.display = 'flex';
+    } else {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 260 + Math.random() * 120;
+      const ex = canvas.width / 2 + Math.cos(angle) * dist;
+      const ey = canvas.height / 2 + Math.sin(angle) * dist;
+      state.enemies.push({
+        x: ex,
+        y: ey,
+        vx: 0,
+        vy: 0,
+        radius: 16,
+        hp: 40 * state.difficultyScale,
+        maxHp: 40 * state.difficultyScale,
+        isBoss: false,
+        attackTimer: 0,
+        color: '#ff6666'
+      });
+    }
+  }
+
+  function spawnParticles(x, y, color, count, spread = Math.PI * 2, speed = 220) {
+    for (let i = 0; i < count; i++) {
+      const a = (Math.random() - 0.5) * spread;
+      const v = speed * (0.4 + Math.random() * 0.6);
+      state.particles.push({
+        x, y,
+        vx: Math.cos(a) * v,
+        vy: Math.sin(a) * v,
+        life: 0.3 + Math.random() * 0.3,
+        maxLife: 0.3 + Math.random() * 0.3,
+        color
+      });
+    }
+  }
+
+  function spawnHitMark(x, y, dirX, dirY) {
+    const len = 18;
+    const nx = dirX;
+    const ny = dirY;
+    const px = -ny;
+    const py = nx;
+    state.particles.push({
+      x, y,
+      vx: 0, vy: 0,
+      life: 0.12,
+      maxLife: 0.12,
+      type: 'hit',
+      nx, ny, px, py,
+      color: '#fff'
+    });
+  }
+
+  function applyHitstop(frames) {
+    state.hitstopFrames = Math.max(state.hitstopFrames, frames);
+  }
+
+  function applyBossStop(frames) {
+    state.bossStopFrames = Math.max(state.bossStopFrames, frames);
+    state.flashTimer = 0.18;
+    flashEl.style.opacity = 0.9;
+  }
+
+  function updateDifficultyOnDeath() {
+    deathCount++;
+    state.loseStreak++;
+    if (state.loseStreak >= 2) {
+      state.difficultyScale = Math.max(0.6, state.difficultyScale - 0.15);
+    }
+  }
+
+  function applyRiskLevel() {
+    if (riskLevel === 1) {
+      riskBtn.textContent = '天秤：報酬↑ / 危険↑';
+    } else {
+      riskBtn.textContent = '天秤：今＝ハイリスク / ハイリターン';
+    }
+  }
+
+  // Input
+  window.addEventListener('keydown', e => {
+    keys[e.key.toLowerCase()] = true;
+    if (e.key === 'h' || e.key === 'H') {
+      toggleHUD();
+    }
+  });
+  window.addEventListener('keyup', e => {
+    keys[e.key.toLowerCase()] = false;
+  });
+
+  canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    mousePos.x = (e.clientX - rect.left) * scaleX;
+    mousePos.y = (e.clientY - rect.top) * scaleY;
+  });
+  canvas.addEventListener('mousedown', e => {
+    if (e.button === 0) mouseDownLeft = true;
+    if (e.button === 2) mouseDownRight = true;
+  });
+  canvas.addEventListener('mouseup', e => {
+    if (e.button === 0) mouseDownLeft = false;
+    if (e.button === 2) mouseDownRight = false;
+  });
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+  // Mobile joystick
+  let joyActive = false;
+  let joyCenter = { x: 0, y: 0 };
+  let joyVec = { x: 0, y: 0 };
+
+  function handleJoyStart(e) {
+    e.preventDefault();
+    joyActive = true;
+    const rect = joystick.getBoundingClientRect();
+    joyCenter.x = rect.left + rect.width / 2;
+    joyCenter.y = rect.top + rect.height / 2;
+    handleJoyMove(e);
+  }
+  function handleJoyMove(e) {
+    if (!joyActive) return;
+    const touch = e.touches ? e.touches[0] : e;
+    const dx = touch.clientX - joyCenter.x;
+    const dy = touch.clientY - joyCenter.y;
+    const maxR = 50;
+    let dist = Math.sqrt(dx * dx + dy * dy);
+    let nx = 0, ny = 0;
+    if (dist > 0) {
+      const clamped = Math.min(dist, maxR);
+      nx = dx / dist;
+      ny = dy / dist;
+      joystickInner.style.transform = `translate(${nx * clamped}px, ${ny * clamped}px)`;
+      joyVec.x = nx * (clamped / maxR);
+      joyVec.y = ny * (clamped / maxR);
+    } else {
+      joystickInner.style.transform = 'translate(-50%, -50%)';
+      joyVec.x = joyVec.y = 0;
+    }
+  }
+  function handleJoyEnd(e) {
+    e.preventDefault();
+    joyActive = false;
+    joyVec.x = joyVec.y = 0;
+    joystickInner.style.transform = 'translate(-50%, -50%)';
+  }
+
+  joystick.addEventListener('touchstart', handleJoyStart, { passive: false });
+  joystick.addEventListener('touchmove', handleJoyMove, { passive: false });
+  joystick.addEventListener('touchend', handleJoyEnd, { passive: false });
+  joystick.addEventListener('touchcancel', handleJoyEnd, { passive: false });
+
+  let meleePressed = false;
+  let rangePressed = false;
+  btnMelee.addEventListener('touchstart', e => { e.preventDefault(); meleePressed = true; });
+  btnMelee.addEventListener('touchend', e => { e.preventDefault(); meleePressed = false; });
+  btnRange.addEventListener('touchstart', e => { e.preventDefault(); rangePressed = true; });
+  btnRange.addEventListener('touchend', e => { e.preventDefault(); rangePressed = false; });
+
+  riskBtn.addEventListener('click', () => {
+    riskLevel = riskLevel === 1 ? 2 : 1;
+    applyRiskLevel();
+  });
+
+  function toggleHUD() {
+    showHUD = !showHUD;
+    hudLeft.style.opacity = showHUD ? 1 : 0;
+    hudRight.style.opacity = showHUD ? 1 : 0;
+    bossBar.style.opacity = showHUD ? 1 : 0;
+    hintEl.style.opacity = showHUD ? 0.7 : 0;
+  }
+  hudToggleBtn.addEventListener('click', toggleHUD);
+
+  // Combat
+  let meleeCooldown = 0;
+  let rangeCooldown = 0;
+
+  function performMeleeAttack() {
+    if (meleeCooldown > 0) return;
+    meleeCooldown = 0.25;
+    const p = state.player;
+    const dx = mousePos.x - p.x;
+    const dy = mousePos.y - p.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = dx / len;
+    const ny = dy / len;
+    const reach = 70;
+    const hitRadius = 40;
+    const centerX = p.x + nx * reach;
+    const centerY = p.y + ny * reach;
+
+    // squash & stretch
+    p.squashTimer = 0.12;
+    p.squash = 1.3;
+    p.stretch = 0.7;
+
+    let hitSomething = false;
+    const meleeDamageBase = riskLevel === 1 ? 60 : 90;
+    const meleeDamage = meleeDamageBase * state.difficultyScale;
+    const enemyDamageToPlayerBase = riskLevel === 1 ? 16 : 24;
+
+    for (const e of state.enemies) {
+      const dist = Math.hypot(e.x - centerX, e.y - centerY);
+      if (dist < hitRadius + e.radius) {
+        e.hp -= meleeDamage;
+        hitSomething = true;
+        spawnParticles(e.x, e.y, e.isBoss ? '#e0b3ff' : '#ffb3b3', 16, Math.PI * 2, 260);
+        spawnHitMark(e.x, e.y, nx, ny);
+        applyHitstop(e.isBoss ? 6 : 4);
+        if (e.isBoss && e.hp <= 0) {
+          applyBossStop(24);
+        }
+      }
+    }
+
+    if (!hitSomething) {
+      // whiff effect
+      spawnParticles(centerX, centerY, '#ccccff', 6, Math.PI * 0.6, 180);
+      applyHitstop(2);
+    }
+
+    // risk: if too close to enemies, they can counter more easily (handled in enemy AI via distance)
+    state.enemies.forEach(e => {
+      const dist = Math.hypot(e.x - p.x, e.y - p.y);
+      if (dist < 80 && !e.isBoss) {
+        e.attackTimer = Math.max(e.attackTimer, 0.1);
+      }
+    });
+  }
+
+  function performRangeAttack() {
+    if (rangeCooldown > 0) return;
+    rangeCooldown = 0.35;
+    const p = state.player;
+    const dx = mousePos.x - p.x;
+    const dy = mousePos.y - p.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = dx / len;
+    const ny = dy / len;
+    const speed = 420;
+    const dmgBase = riskLevel === 1 ? 12 : 18; // still clearly lower than melee
+    const dmg = dmgBase * state.difficultyScale;
+
+    state.bullets.push({
+      x: p.x + nx * 20,
+      y: p.y + ny * 20,
+      vx: nx * speed,
+      vy: ny * speed,
+      life: 0.8,
+      damage: dmg
+    });
+
+    // subtle stretch
+    p.squashTimer = 0.08;
+    p.squash = 0.9;
+    p.stretch = 1.1;
+  }
+
+  function update(dt) {
+    state.time += dt;
+
+    if (state.hitstopFrames > 0 || state.bossStopFrames > 0) {
+      state.hitstopFrames = Math.max(0, state.hitstopFrames - 1);
+      state.bossStopFrames = Math.max(0, state.bossStopFrames - 1);
+      if (state.flashTimer > 0) {
+        state.flashTimer -= dt;
+        flashEl.style.opacity = Math.max(0, state.flashTimer / 0.18);
+      } else {
+        flashEl.style.opacity = 0;
+      }
+      return; // freeze motion but still render
+    }
+
+    if (state.flashTimer > 0) {
+      state.flashTimer -= dt;
+      flashEl.style.opacity = Math.max(0, state.flashTimer / 0.18);
+    } else {
+      flashEl.style.opacity = 0;
+    }
+
+    const p = state.player;
+
+    // Stage progression: "遊びながら学ぶ"
+    if (state.stagePhase === 0) {
+      // Intro: spawn a single slow enemy to teach close vs far
+      if (state.enemies.length === 0 && state.time > 0.5) {
+        spawnEnemy(false);
+      }
+      if (state.time > 12 && state.enemies.length <= 1) {
+        state.stagePhase = 1;
+      }
+    } else if (state.stagePhase === 1) {
+      // Normal enemies
+      if (state.enemies.length < 4) {
+        if (Math.random() < 0.02) spawnEnemy(false);
+      }
+      if (state.time > 40) {
+        state.stagePhase = 2;
+        spawnEnemy(true);
+      }
+    } else if (state.stagePhase === 2) {
+      // Boss phase: only boss
+      if (!state.boss && state.enemies.length === 0) {
+        // victory
+      }
+    }
+
+    // Player movement
+    let inputX = 0, inputY = 0;
+    if (!isMobile) {
+      if (keys['w'] || keys['arrowup']) inputY -= 1;
+      if (keys['s'] || keys['arrowdown']) inputY += 1;
+      if (keys['a'] || keys['arrowleft']) inputX -= 1;
+      if (keys['d'] || keys['arrowright']) inputX += 1;
+    } else {
+      inputX = joyVec.x;
+      inputY = joyVec.y;
+    }
+    const len = Math.hypot(inputX, inputY);
+    if (len > 1) {
+      inputX /= len;
+      inputY /= len;
+    }
+
+    const accel = p.accel;
+    p.vx += inputX * accel * dt;
+    p.vy += inputY * accel * dt;
+
+    // friction
+    const friction = p.friction;
+    p.vx -= p.vx * friction * dt;
+    p.vy -= p.vy * friction * dt;
+
+    const maxSpeed = p.baseSpeed;
+    const spd = Math.hypot(p.vx, p.vy);
+    if (spd > maxSpeed) {
+      p.vx = (p.vx / spd) * maxSpeed;
+      p.vy = (p.vy / spd) * maxSpeed;
+    }
+
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+
+    // "崖際"風の制御：画面端での落下を緩和
+    const margin = 24;
+    const actionActive = meleeCooldown > 0 || rangeCooldown > 0;
+    if (!actionActive) {
+      p.x = Math.max(margin, Math.min(canvas.width - margin, p.x));
+      p.y = Math.max(margin, Math.min(canvas.height - margin, p.y));
+    } else {
+      // アクション中は少しだけ外に出ても戻されにくい
+      p.x = Math.max(-20, Math.min(canvas.width + 20, p.x));
+      p.y = Math.max(-20, Math.min(canvas.height + 20, p.y));
+    }
+
+    // squash & stretch decay
+    if (p.squashTimer > 0) {
+      p.squashTimer -= dt;
+      if (p.squashTimer <= 0) {
+        p.squash = 1;
+        p.stretch = 1;
+      }
+    }
+
+    // Cooldowns
+    meleeCooldown = Math.max(0, meleeCooldown - dt);
+    rangeCooldown = Math.max(0, rangeCooldown - dt);
+
+    // Attacks
+    const meleeInput = (!isMobile && mouseDownLeft) || (isMobile && meleePressed);
+    const rangeInput = (!isMobile && mouseDownRight) || (isMobile && rangePressed);
+    if (meleeInput) performMeleeAttack();
+    if (rangeInput) performRangeAttack();
+
+    // Bullets
+    for (let i = state.bullets.length - 1; i >= 0; i--) {
+      const b = state.bullets[i];
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      b.life -= dt;
+      if (b.life <= 0) {
+        state.bullets.splice(i, 1);
+        continue;
+      }
+      for (const e of state.enemies) {
+        const dist = Math.hypot(e.x - b.x, e.y - b.y);
+        if (dist < e.radius + 6) {
+          e.hp -= b.damage;
+          spawnParticles(e.x, e.y, e.isBoss ? '#e0b3ff' : '#ffd1d1', 8, Math.PI * 1.2, 200);
+          spawnHitMark(e.x, e.y, (b.vx || 1), (b.vy || 0));
+          applyHitstop(e.isBoss ? 4 : 2);
+          state.bullets.splice(i, 1);
+          break;
+        }
+      }
+    }
+
+    // Enemies
+    const enemyDamageBase = riskLevel === 1 ? 10 : 16;
+    for (let i = state.enemies.length - 1; i >= 0; i--) {
+      const e = state.enemies[i];
+      const dx = p.x - e.x;
+      const dy = p.y - e.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      const nx = dx / dist;
+      const ny = dy / dist;
+
+      const desiredDist = e.isBoss ? 160 : 120;
+      let speed = e.isBoss ? 80 : 120;
+      speed *= state.difficultyScale;
+
+      if (dist > desiredDist) {
+        e.vx += nx * speed * dt;
+        e.vy += ny * speed * dt;
+      } else if (dist < desiredDist * 0.7) {
+        e.vx -= nx * speed * dt;
+        e.vy -= ny * speed * dt;
+      }
+
+      e.vx -= e.vx * 4 * dt;
+      e.vy -= e.vy * 4 * dt;
+
+      e.x += e.vx * dt;
+      e.y += e.vy * dt;
+
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0 && dist < (e.isBoss ? 220 : 140)) {
+        e.attackTimer = e.isBoss ? 1.4 : 1.2;
+        // enemy attack: melee-like pulse
+        const dmg = enemyDamageBase * state.difficultyScale * (e.isBoss ? 1.6 : 1);
+        if (dist < e.radius + p.radius + 12 && p.invulTime <= 0) {
+          p.hp -= dmg;
+          p.invulTime = 0.6;
+          spawnParticles(p.x, p.y, '#a0d8ff', 14, Math.PI * 2, 260);
+          applyHitstop(e.isBoss ? 6 : 4);
+        }
+      }
+
+      if (e.hp <= 0) {
+        spawnParticles(e.x, e.y, e.isBoss ? '#f5e1ff' : '#ffe6e6', e.isBoss ? 40 : 20, Math.PI * 2, 320);
+        if (e.isBoss) {
+          applyBossStop(30);
+        }
+        state.enemies.splice(i, 1);
+        if (e.isBoss) {
+          state.boss = null;
+        }
+      }
+    }
+
+    // Player invul
+    if (p.invulTime > 0) {
+      p.invulTime -= dt;
+    }
+
+    // Particles
+    for (let i = state.particles.length - 1; i >= 0; i--) {
+      const pa = state.particles[i];
+      pa.life -= dt;
+      if (pa.life <= 0) {
+        state.particles.splice(i, 1);
+        continue;
+      }
+      if (!pa.type || pa.type !== 'hit') {
+        pa.x += pa.vx * dt;
+        pa.y += pa.vy * dt;
+        pa.vx *= 0.96;
+        pa.vy *= 0.96;
+      }
+    }
+
+    // Player death
+    if (p.hp <= 0) {
+      updateDifficultyOnDeath();
+      resetGame();
+    }
+
+    // Boss HP bar
+    if (state.boss) {
+      const ratio = Math.max(0, state.boss.hp / state.boss.maxHp);
+      bossHpFill.style.transform = `scaleX(${ratio})`;
+    }
+
+    // Player HP UI
+    const hpRatio = Math.max(0, p.hp / p.maxHp);
+    playerHpFill.style.transform = `scaleX(${hpRatio})`;
+    playerHpLabel.textContent = `HP ${Math.round(p.hp)}/${p.maxHp}`;
+  }
+
+  function draw() {
+    const p = state.player;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Background grid
+    ctx.save();
+    ctx.globalAlpha = 0.25;
+    ctx.strokeStyle = '#1f2538';
+    ctx.lineWidth = 1;
+    const gridSize = 40;
+    const offset = (state.time * 20) % gridSize;
+    for (let x = -gridSize; x < canvas.width + gridSize; x += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(x + offset, 0);
+      ctx.lineTo(x + offset, canvas.height);
+      ctx.stroke();
+    }
+    for (let y = -gridSize; y < canvas.height + gridSize; y += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(0, y + offset);
+      ctx.lineTo(canvas.width, y + offset);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Particles (behind)
+    for (const pa of state.particles) {
+      const t = pa.life / pa.maxLife;
+      if (pa.type === 'hit') continue;
+      ctx.save();
+      ctx.globalAlpha = t;
+      ctx.fillStyle = pa.color;
+      ctx.beginPath();
+      ctx.arc(pa.x, pa.y, 3 + 3 * (1 - t), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Enemies
+    for (const e of state.enemies) {
+      ctx.save();
+      const pulse = 1 + Math.sin(state.time * 6 + e.x * 0.01) * 0.05;
+      ctx.translate(e.x, e.y);
+      ctx.scale(pulse, pulse);
+      ctx.fillStyle = e.isBoss ? e.color : '#ff5555';
+      ctx.beginPath();
+      ctx.arc(0, 0, e.radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // subtle 2-axis twist effect (fake)
+      ctx.globalAlpha = 0.4;
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, e.radius * 0.6, e.radius * 0.3, Math.sin(state.time * 2) * 0.6, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Bullets
+    for (const b of state.bullets) {
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      const angle = Math.atan2(b.vy, b.vx);
+      ctx.rotate(angle);
+      ctx.fillStyle = '#a0d8ff';
+      ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 10, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Player (squash & stretch)
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    const dx = mousePos.x - p.x;
+    const dy = mousePos.y - p.y;
+    const angle = Math.atan2(dy, dx);
+    ctx.rotate(angle + Math.sin(state.time * 4) * 0.05); // 2軸風のねじれ
+    const sx = p.squash;
+    const sy = p.stretch;
+    ctx.scale(sx, sy);
+
+    // body
+    ctx.fillStyle = '#4bd5ff';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, p.radius, p.radius * 1.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // face
+    ctx.save();
+    ctx.rotate(-angle * 0.4);
+    ctx.translate(0, -4);
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(-6, -2, 3, 0, Math.PI * 2);
+    ctx.arc(6, -2, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(-6, -2, 1.5, 0, Math.PI * 2);
+    ctx.arc(6, -2, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, 4, 5, 0, Math.PI);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.restore();
+
+    // Melee arc preview
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(angle);
+    ctx.globalAlpha = 0.18;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, 70, -0.6, 0.6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // Hit particles (front)
+    for (const pa of state.particles) {
+      if (pa.type === 'hit') {
+        const t = pa.life / pa.maxLife;
+        ctx.save();
+        ctx.translate(pa.x, pa.y);
+        ctx.globalAlpha = t;
+        ctx.strokeStyle = pa.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-pa.px * 6, -pa.py * 6);
+        ctx.lineTo(pa.px * 6, pa.py * 6);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-pa.nx * 6, -pa.ny * 6);
+        ctx.lineTo(pa.nx * 6, pa.ny * 6);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    // subtle vignette
+    const grd = ctx.createRadialGradient(
+      canvas.width / 2, canvas.height / 2, canvas.width * 0.1,
+      canvas.width / 2, canvas.height / 2, canvas.width * 0.7
+    );
+    grd.addColorStop(0, 'rgba(0,0,0,0)');
+    grd.addColorStop(1, 'rgba(0,0,0,0.6)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  let lastTime = performance.now();
+  function loop(now) {
+    requestAnimationFrame(loop);
+    const dt = Math.min(0.033, (now - lastTime) / 1000);
+    lastTime = now;
+
+    // fixed-ish timestep for 60fps feel
+    const step = 1 / 60;
+    let acc = dt;
+    while (acc > 0) {
+      const d = Math.min(step, acc);
+      update(d);
+      acc -= d;
+    }
+    draw();
+  }
+
+  applyRiskLevel();
+  resetGame();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
