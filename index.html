@@ -254,6 +254,12 @@
     pointer-events: none;
     transition: opacity 0.6s ease;
   }
+  @media (min-aspect-ratio: 16/9) {
+    canvas { width: 960px; height: 540px; }
+  }
+  @media (max-aspect-ratio: 16/9) {
+    canvas { width: 100vw; height: calc(100vw * 9 / 16); }
+  }
 </style>
 </head>
 <body>
@@ -277,43 +283,32 @@
           <div class="hp-fill" id="playerHpFill"></div>
         </div>
         <div class="hp-label" id="playerHpLabel"></div>
-
-        <!-- ★ スコア表示 -->
         <div class="label-box">
           <div class="label-title">スコア</div>
           <div class="label-main" id="scoreLabel">0</div>
         </div>
-
-        <!-- ★ ステージ表示 -->
         <div class="label-box">
           <div class="label-title">ステージ</div>
           <div class="label-main" id="stageLabel">1</div>
         </div>
       </div>
-
       <div class="hud-right" id="hudRight">
         <button class="btn" id="riskBtn">天秤：報酬↑ / 危険↑</button>
         <button class="btn" id="hudToggleBtn">HUD切替 [H]</button>
       </div>
     </div>
-
     <div class="boss-bar" id="bossBar" style="display:none;">
       <div class="boss-name">BOSS：虚無の核</div>
       <div class="boss-hp">
         <div class="boss-hp-fill" id="bossHpFill"></div>
       </div>
     </div>
-
     <div class="hint" id="hint">
       PC: WASD移動 / マウスで狙う / 左クリック＝近接 / 右クリック＝遠距離<br>
       スマホ: 左スティックで移動 / 右の「近」「遠」ボタンで攻撃
     </div>
-
     <div class="flash" id="flash"></div>
-
-    <!-- ★ ステージバナー -->
     <div class="stage-banner" id="stageBanner"></div>
-
     <div id="mobileControls">
       <div class="joystick" id="joystick">
         <div class="joystick-inner" id="joystickInner"></div>
@@ -359,10 +354,9 @@
   let mouseDownLeft = false;
   let mouseDownRight = false;
 
-  let isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   document.getElementById('mobileControls').style.display = isMobile ? 'block' : 'none';
 
-  // ★ スコアとステージ
   let score = 0;
   let stage = 1;
 
@@ -396,21 +390,25 @@
     boss: null
   };
 
+  function updateScore(delta) {
+    score += delta;
+    if (score < 0) score = 0;
+    scoreLabel.textContent = score;
+  }
+
   function showStageBanner() {
     stageBanner.textContent = `STAGE ${stage}`;
     stageBanner.style.opacity = 1;
-    setTimeout(() => {
-      stageBanner.style.opacity = 0;
-    }, 1200);
+    setTimeout(() => { stageBanner.style.opacity = 0; }, 1200);
   }
 
-  function resetGame() {
-    state.player.x = canvas.width / 2;
-    state.player.y = canvas.height / 2 + 80;
-    state.player.vx = 0;
-    state.player.vy = 0;
-    state.player.hp = state.player.maxHp;
-    state.player.invulTime = 0;
+  function resetGameForStage() {
+    const p = state.player;
+    p.x = canvas.width / 2;
+    p.y = canvas.height / 2 + 80;
+    p.vx = p.vy = 0;
+    p.hp = p.maxHp;
+    p.invulTime = 0;
     state.enemies = [];
     state.bullets = [];
     state.particles = [];
@@ -426,8 +424,8 @@
   function nextStage() {
     stage++;
     stageLabel.textContent = stage;
-    state.difficultyScale += 0.2;
-    resetGame();
+    state.difficultyScale += 0.25;
+    resetGameForStage();
     showStageBanner();
   }
 
@@ -484,7 +482,6 @@
   }
 
   function spawnHitMark(x, y, dirX, dirY) {
-    const len = 18;
     const nx = dirX;
     const ny = dirY;
     const px = -ny;
@@ -504,4 +501,563 @@
     state.hitstopFrames = Math.max(state.hitstopFrames, frames);
   }
 
-  function apply
+  function applyBossStop(frames) {
+    state.bossStopFrames = Math.max(state.bossStopFrames, frames);
+    state.flashTimer = 0.18;
+    flashEl.style.opacity = 0.9;
+  }
+
+  function updateDifficultyOnDeath() {
+    deathCount++;
+    state.loseStreak++;
+    if (state.loseStreak >= 2) {
+      state.difficultyScale = Math.max(0.6, state.difficultyScale - 0.15);
+    }
+  }
+
+  function applyRiskLevel() {
+    riskBtn.textContent = riskLevel === 1
+      ? '天秤：報酬↑ / 危険↑'
+      : '天秤：今＝ハイリスク / ハイリターン';
+  }
+
+  window.addEventListener('keydown', e => {
+    keys[e.key.toLowerCase()] = true;
+    if (e.key === 'h' || e.key === 'H') toggleHUD();
+  });
+  window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+  canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    mousePos.x = (e.clientX - rect.left) * scaleX;
+    mousePos.y = (e.clientY - rect.top) * scaleY;
+  });
+  canvas.addEventListener('mousedown', e => {
+    if (e.button === 0) mouseDownLeft = true;
+    if (e.button === 2) mouseDownRight = true;
+  });
+  canvas.addEventListener('mouseup', e => {
+    if (e.button === 0) mouseDownLeft = false;
+    if (e.button === 2) mouseDownRight = false;
+  });
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+  let joyActive = false;
+  let joyCenter = { x: 0, y: 0 };
+  let joyVec = { x: 0, y: 0 };
+
+  function handleJoyStart(e) {
+    e.preventDefault();
+    joyActive = true;
+    const rect = joystick.getBoundingClientRect();
+    joyCenter.x = rect.left + rect.width / 2;
+    joyCenter.y = rect.top + rect.height / 2;
+    handleJoyMove(e);
+  }
+  function handleJoyMove(e) {
+    if (!joyActive) return;
+    const touch = e.touches ? e.touches[0] : e;
+    const dx = touch.clientX - joyCenter.x;
+    const dy = touch.clientY - joyCenter.y;
+    const maxR = 50;
+    let dist = Math.sqrt(dx * dx + dy * dy);
+    let nx = 0, ny = 0;
+    if (dist > 0) {
+      const clamped = Math.min(dist, maxR);
+      nx = dx / dist;
+      ny = dy / dist;
+      joystickInner.style.transform = `translate(${nx * clamped}px, ${ny * clamped}px)`;
+      joyVec.x = nx * (clamped / maxR);
+      joyVec.y = ny * (clamped / maxR);
+    } else {
+      joystickInner.style.transform = 'translate(-50%, -50%)';
+      joyVec.x = joyVec.y = 0;
+    }
+  }
+  function handleJoyEnd(e) {
+    e.preventDefault();
+    joyActive = false;
+    joyVec.x = joyVec.y = 0;
+    joystickInner.style.transform = 'translate(-50%, -50%)';
+  }
+
+  joystick.addEventListener('touchstart', handleJoyStart, { passive: false });
+  joystick.addEventListener('touchmove', handleJoyMove, { passive: false });
+  joystick.addEventListener('touchend', handleJoyEnd, { passive: false });
+  joystick.addEventListener('touchcancel', handleJoyEnd, { passive: false });
+
+  let meleePressed = false;
+  let rangePressed = false;
+  btnMelee.addEventListener('touchstart', e => { e.preventDefault(); meleePressed = true; });
+  btnMelee.addEventListener('touchend', e => { e.preventDefault(); meleePressed = false; });
+  btnRange.addEventListener('touchstart', e => { e.preventDefault(); rangePressed = true; });
+  btnRange.addEventListener('touchend', e => { e.preventDefault(); rangePressed = false; });
+
+  riskBtn.addEventListener('click', () => {
+    riskLevel = riskLevel === 1 ? 2 : 1;
+    applyRiskLevel();
+  });
+
+  function toggleHUD() {
+    showHUD = !showHUD;
+    const o = showHUD ? 1 : 0;
+    hudLeft.style.opacity = o;
+    hudRight.style.opacity = o;
+    bossBar.style.opacity = o;
+    hintEl.style.opacity = showHUD ? 0.7 : 0;
+  }
+  hudToggleBtn.addEventListener('click', toggleHUD);
+
+  let meleeCooldown = 0;
+  let rangeCooldown = 0;
+
+  function performMeleeAttack() {
+    if (meleeCooldown > 0) return;
+    meleeCooldown = 0.25;
+    const p = state.player;
+    const dx = mousePos.x - p.x;
+    const dy = mousePos.y - p.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = dx / len;
+    const ny = dy / len;
+    const reach = 70;
+    const hitRadius = 40;
+    const centerX = p.x + nx * reach;
+    const centerY = p.y + ny * reach;
+
+    p.squashTimer = 0.12;
+    p.squash = 1.3;
+    p.stretch = 0.7;
+
+    let hitSomething = false;
+    const meleeDamageBase = riskLevel === 1 ? 60 : 90;
+    const meleeDamage = meleeDamageBase * state.difficultyScale;
+
+    for (const e of state.enemies) {
+      const dist = Math.hypot(e.x - centerX, e.y - centerY);
+      if (dist < hitRadius + e.radius) {
+        e.hp -= meleeDamage;
+        hitSomething = true;
+        spawnParticles(e.x, e.y, e.isBoss ? '#e0b3ff' : '#ffb3b3', 16, Math.PI * 2, 260);
+        spawnHitMark(e.x, e.y, nx, ny);
+        applyHitstop(e.isBoss ? 6 : 4);
+        if (e.isBoss && e.hp <= 0) {
+          applyBossStop(24);
+        }
+      }
+    }
+
+    if (!hitSomething) {
+      spawnParticles(centerX, centerY, '#ccccff', 6, Math.PI * 0.6, 180);
+      applyHitstop(2);
+    }
+
+    state.enemies.forEach(e => {
+      const dist = Math.hypot(e.x - p.x, e.y - p.y);
+      if (dist < 80 && !e.isBoss) e.attackTimer = Math.max(e.attackTimer, 0.1);
+    });
+  }
+
+  function performRangeAttack() {
+    if (rangeCooldown > 0) return;
+    rangeCooldown = 0.35;
+    const p = state.player;
+    const dx = mousePos.x - p.x;
+    const dy = mousePos.y - p.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = dx / len;
+    const ny = dy / len;
+    const speed = 420;
+    const dmgBase = riskLevel === 1 ? 12 : 18;
+    const dmg = dmgBase * state.difficultyScale;
+
+    state.bullets.push({
+      x: p.x + nx * 20,
+      y: p.y + ny * 20,
+      vx: nx * speed,
+      vy: ny * speed,
+      life: 0.8,
+      damage: dmg
+    });
+
+    p.squashTimer = 0.08;
+    p.squash = 0.9;
+    p.stretch = 1.1;
+  }
+
+  function update(dt) {
+    state.time += dt;
+
+    if (state.hitstopFrames > 0 || state.bossStopFrames > 0) {
+      state.hitstopFrames = Math.max(0, state.hitstopFrames - 1);
+      state.bossStopFrames = Math.max(0, state.bossStopFrames - 1);
+      if (state.flashTimer > 0) {
+        state.flashTimer -= dt;
+        flashEl.style.opacity = Math.max(0, state.flashTimer / 0.18);
+      } else {
+        flashEl.style.opacity = 0;
+      }
+      return;
+    }
+
+    if (state.flashTimer > 0) {
+      state.flashTimer -= dt;
+      flashEl.style.opacity = Math.max(0, state.flashTimer / 0.18);
+    } else {
+      flashEl.style.opacity = 0;
+    }
+
+    const p = state.player;
+
+    if (state.stagePhase === 0) {
+      if (state.enemies.length === 0 && state.time > 0.5) spawnEnemy(false);
+      if (state.time > 12 && state.enemies.length <= 1) state.stagePhase = 1;
+    } else if (state.stagePhase === 1) {
+      const targetCount = 2 + Math.min(3, stage);
+      if (state.enemies.length < targetCount) {
+        if (Math.random() < 0.02) spawnEnemy(false);
+      }
+      if (state.time > 40) {
+        state.stagePhase = 2;
+        spawnEnemy(true);
+      }
+    } else if (state.stagePhase === 2) {
+      if (!state.boss && state.enemies.length === 0) {
+        nextStage();
+        return;
+      }
+    }
+
+    let inputX = 0, inputY = 0;
+    if (!isMobile) {
+      if (keys['w'] || keys['arrowup']) inputY -= 1;
+      if (keys['s'] || keys['arrowdown']) inputY += 1;
+      if (keys['a'] || keys['arrowleft']) inputX -= 1;
+      if (keys['d'] || keys['arrowright']) inputX += 1;
+    } else {
+      inputX = joyVec.x;
+      inputY = joyVec.y;
+    }
+    let len = Math.hypot(inputX, inputY);
+    if (len > 1) { inputX /= len; inputY /= len; }
+
+    const accel = p.accel;
+    p.vx += inputX * accel * dt;
+    p.vy += inputY * accel * dt;
+
+    const friction = p.friction;
+    p.vx -= p.vx * friction * dt;
+    p.vy -= p.vy * friction * dt;
+
+    const maxSpeed = p.baseSpeed;
+    const spd = Math.hypot(p.vx, p.vy);
+    if (spd > maxSpeed) {
+      p.vx = (p.vx / spd) * maxSpeed;
+      p.vy = (p.vy / spd) * maxSpeed;
+    }
+
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+
+    const margin = 24;
+    const actionActive = meleeCooldown > 0 || rangeCooldown > 0;
+    if (!actionActive) {
+      p.x = Math.max(margin, Math.min(canvas.width - margin, p.x));
+      p.y = Math.max(margin, Math.min(canvas.height - margin, p.y));
+    } else {
+      p.x = Math.max(-20, Math.min(canvas.width + 20, p.x));
+      p.y = Math.max(-20, Math.min(canvas.height + 20, p.y));
+    }
+
+    if (p.squashTimer > 0) {
+      p.squashTimer -= dt;
+      if (p.squashTimer <= 0) {
+        p.squash = 1;
+        p.stretch = 1;
+      }
+    }
+
+    meleeCooldown = Math.max(0, meleeCooldown - dt);
+    rangeCooldown = Math.max(0, rangeCooldown - dt);
+
+    const meleeInput = (!isMobile && mouseDownLeft) || (isMobile && meleePressed);
+    const rangeInput = (!isMobile && mouseDownRight) || (isMobile && rangePressed);
+    if (meleeInput) performMeleeAttack();
+    if (rangeInput) performRangeAttack();
+
+    for (let i = state.bullets.length - 1; i >= 0; i--) {
+      const b = state.bullets[i];
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      b.life -= dt;
+      if (b.life <= 0) {
+        state.bullets.splice(i, 1);
+        continue;
+      }
+      for (const e of state.enemies) {
+        const dist = Math.hypot(e.x - b.x, e.y - b.y);
+        if (dist < e.radius + 6) {
+          e.hp -= b.damage;
+          spawnParticles(e.x, e.y, e.isBoss ? '#e0b3ff' : '#ffd1d1', 8, Math.PI * 1.2, 200);
+          spawnHitMark(e.x, e.y, (b.vx || 1), (b.vy || 0));
+          applyHitstop(e.isBoss ? 4 : 2);
+          state.bullets.splice(i, 1);
+          break;
+        }
+      }
+    }
+
+    const enemyDamageBase = riskLevel === 1 ? 10 : 16;
+    for (let i = state.enemies.length - 1; i >= 0; i--) {
+      const e = state.enemies[i];
+      const dx = p.x - e.x;
+      const dy = p.y - e.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      const nx = dx / dist;
+      const ny = dy / dist;
+
+      const desiredDist = e.isBoss ? 160 : 120;
+      let speed = e.isBoss ? 80 : 120;
+      speed *= state.difficultyScale;
+
+      if (dist > desiredDist) {
+        e.vx += nx * speed * dt;
+        e.vy += ny * speed * dt;
+      } else if (dist < desiredDist * 0.7) {
+        e.vx -= nx * speed * dt;
+        e.vy -= ny * speed * dt;
+      }
+
+      e.vx -= e.vx * 4 * dt;
+      e.vy -= e.vy * 4 * dt;
+
+      e.x += e.vx * dt;
+      e.y += e.vy * dt;
+
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0 && dist < (e.isBoss ? 220 : 140)) {
+        e.attackTimer = e.isBoss ? 1.4 : 1.2;
+        const dmg = enemyDamageBase * state.difficultyScale * (e.isBoss ? 1.6 : 1);
+        if (dist < e.radius + p.radius + 12 && p.invulTime <= 0) {
+          p.hp -= dmg;
+          p.invulTime = 0.6;
+          spawnParticles(p.x, p.y, '#a0d8ff', 14, Math.PI * 2, 260);
+          applyHitstop(e.isBoss ? 6 : 4);
+        }
+      }
+
+      if (e.hp <= 0) {
+        if (e.isBoss) {
+          updateScore(500 * stage);
+          applyBossStop(30);
+        } else {
+          updateScore(50);
+        }
+        spawnParticles(e.x, e.y, e.isBoss ? '#f5e1ff' : '#ffe6e6', e.isBoss ? 40 : 20, Math.PI * 2, 320);
+        if (e.isBoss) state.boss = null;
+        state.enemies.splice(i, 1);
+      }
+    }
+
+    if (p.invulTime > 0) p.invulTime -= dt;
+
+    for (let i = state.particles.length - 1; i >= 0; i--) {
+      const pa = state.particles[i];
+      pa.life -= dt;
+      if (pa.life <= 0) {
+        state.particles.splice(i, 1);
+        continue;
+      }
+      if (!pa.type || pa.type !== 'hit') {
+        pa.x += pa.vx * dt;
+        pa.y += pa.vy * dt;
+        pa.vx *= 0.96;
+        pa.vy *= 0.96;
+      }
+    }
+
+    if (p.hp <= 0) {
+      updateDifficultyOnDeath();
+      state.loseStreak = 0;
+      resetGameForStage();
+      return;
+    }
+
+    if (state.boss) {
+      const ratio = Math.max(0, state.boss.hp / state.boss.maxHp);
+      bossHpFill.style.transform = `scaleX(${ratio})`;
+    }
+
+    const hpRatio = Math.max(0, p.hp / p.maxHp);
+    playerHpFill.style.transform = `scaleX(${hpRatio})`;
+    playerHpLabel.textContent = `HP ${Math.round(p.hp)}/${p.maxHp}`;
+  }
+
+  function draw() {
+    const p = state.player;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.save();
+    ctx.globalAlpha = 0.25;
+    ctx.strokeStyle = '#1f2538';
+    ctx.lineWidth = 1;
+    const gridSize = 40;
+    const offset = (state.time * 20) % gridSize;
+    for (let x = -gridSize; x < canvas.width + gridSize; x += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(x + offset, 0);
+      ctx.lineTo(x + offset, canvas.height);
+      ctx.stroke();
+    }
+    for (let y = -gridSize; y < canvas.height + gridSize; y += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(0, y + offset);
+      ctx.lineTo(canvas.width, y + offset);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    for (const pa of state.particles) {
+      if (pa.type === 'hit') continue;
+      const t = pa.life / pa.maxLife;
+      ctx.save();
+      ctx.globalAlpha = t;
+      ctx.fillStyle = pa.color;
+      ctx.beginPath();
+      ctx.arc(pa.x, pa.y, 3 + 3 * (1 - t), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    for (const e of state.enemies) {
+      ctx.save();
+      const pulse = 1 + Math.sin(state.time * 6 + e.x * 0.01) * 0.05;
+      ctx.translate(e.x, e.y);
+      ctx.scale(pulse, pulse);
+      ctx.fillStyle = e.isBoss ? e.color : '#ff5555';
+      ctx.beginPath();
+      ctx.arc(0, 0, e.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 0.4;
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, e.radius * 0.6, e.radius * 0.3, Math.sin(state.time * 2) * 0.6, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    for (const b of state.bullets) {
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      const angle = Math.atan2(b.vy, b.vx);
+      ctx.rotate(angle);
+      ctx.fillStyle = '#a0d8ff';
+      ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 10, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    const dx = mousePos.x - p.x;
+    const dy = mousePos.y - p.y;
+    const angle = Math.atan2(dy, dx);
+    ctx.rotate(angle + Math.sin(state.time * 4) * 0.05);
+    ctx.scale(p.squash, p.stretch);
+
+    ctx.fillStyle = '#4bd5ff';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, p.radius, p.radius * 1.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.save();
+    ctx.rotate(-angle * 0.4);
+    ctx.translate(0, -4);
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(-6, -2, 3, 0, Math.PI * 2);
+    ctx.arc(6, -2, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(-6, -2, 1.5, 0, Math.PI * 2);
+    ctx.arc(6, -2, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, 4, 5, 0, Math.PI);
+    ctx.stroke();
+    ctx.restore();
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(angle);
+    ctx.globalAlpha = 0.18;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, 70, -0.6, 0.6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    for (const pa of state.particles) {
+      if (pa.type === 'hit') {
+        const t = pa.life / pa.maxLife;
+        ctx.save();
+        ctx.translate(pa.x, pa.y);
+        ctx.globalAlpha = t;
+        ctx.strokeStyle = pa.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-pa.px * 6, -pa.py * 6);
+        ctx.lineTo(pa.px * 6, pa.py * 6);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-pa.nx * 6, -pa.ny * 6);
+        ctx.lineTo(pa.nx * 6, pa.ny * 6);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    const grd = ctx.createRadialGradient(
+      canvas.width / 2, canvas.height / 2, canvas.width * 0.1,
+      canvas.width / 2, canvas.height / 2, canvas.width * 0.7
+    );
+    grd.addColorStop(0, 'rgba(0,0,0,0)');
+    grd.addColorStop(1, 'rgba(0,0,0,0.6)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  let lastTime = performance.now();
+  function loop(now) {
+    requestAnimationFrame(loop);
+    const dt = Math.min(0.033, (now - lastTime) / 1000);
+    lastTime = now;
+    const step = 1 / 60;
+    let acc = dt;
+    while (acc > 0) {
+      const d = Math.min(step, acc);
+      update(d);
+      acc -= d;
+    }
+    draw();
+  }
+
+  applyRiskLevel();
+  resetGameForStage();
+  showStageBanner();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
